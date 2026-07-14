@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "tournament": {
     "name": "Bản Làng Tia Chớp Championship",
     "seasonLabel": "Summer 2026",
@@ -82,199 +82,217 @@
   "rounds": [
     {
       "day": 1,
-      "bye": "KOF",
+      "date": "2026-07-13",
+      "time": "20:00",
+      "bye": "GOG",
       "matches": [
         [
-          "GOG",
+          "KOF",
           "PGE"
         ],
         [
-          "LVA",
-          "MAXXC"
-        ],
-        [
-          "DFX",
-          "WAL"
+          "MAXXC",
+          "DFX"
         ],
         [
           "T1M",
           "WOLF"
+        ],
+        [
+          "WAL",
+          "LVA"
         ]
       ]
     },
     {
       "day": 2,
-      "bye": "LVA",
+      "date": "2026-07-14",
+      "time": "20:00",
+      "bye": "T1M",
       "matches": [
         [
-          "GOG",
-          "KOF"
+          "KOF",
+          "DFX"
         ],
         [
-          "WAL",
-          "PGE"
-        ],
-        [
-          "MAXXC",
+          "PGE",
           "WOLF"
         ],
         [
-          "DFX",
-          "T1M"
+          "MAXXC",
+          "LVA"
+        ],
+        [
+          "WAL",
+          "GOG"
         ]
       ]
     },
     {
       "day": 3,
-      "bye": "WOLF",
-      "matches": [
-        [
-          "LVA",
-          "KOF"
-        ],
-        [
-          "WAL",
-          "GOG"
-        ],
-        [
-          "PGE",
-          "T1M"
-        ],
-        [
-          "MAXXC",
-          "DFX"
-        ]
-      ]
-    },
-    {
-      "day": 4,
-      "bye": "DFX",
-      "matches": [
-        [
-          "WAL",
-          "KOF"
-        ],
-        [
-          "WOLF",
-          "LVA"
-        ],
-        [
-          "T1M",
-          "GOG"
-        ],
-        [
-          "PGE",
-          "MAXXC"
-        ]
-      ]
-    },
-    {
-      "day": 5,
+      "date": "2026-07-15",
+      "time": "20:00",
       "bye": "PGE",
       "matches": [
         [
-          "WOLF",
-          "KOF"
-        ],
-        [
-          "T1M",
-          "WAL"
+          "KOF",
+          "WOLF"
         ],
         [
           "DFX",
           "LVA"
         ],
         [
-          "GOG",
+          "MAXXC",
+          "GOG"
+        ],
+        [
+          "T1M",
+          "WAL"
+        ]
+      ]
+    },
+    {
+      "day": 4,
+      "date": "2026-07-16",
+      "time": "20:00",
+      "bye": "WOLF",
+      "matches": [
+        [
+          "KOF",
+          "LVA"
+        ],
+        [
+          "DFX",
+          "GOG"
+        ],
+        [
+          "PGE",
+          "WAL"
+        ],
+        [
+          "MAXXC",
+          "T1M"
+        ]
+      ]
+    },
+    {
+      "day": 5,
+      "date": "2026-07-17",
+      "time": "20:00",
+      "bye": "KOF",
+      "matches": [
+        [
+          "LVA",
+          "GOG"
+        ],
+        [
+          "WOLF",
+          "WAL"
+        ],
+        [
+          "DFX",
+          "T1M"
+        ],
+        [
+          "PGE",
           "MAXXC"
         ]
       ]
     },
     {
       "day": 6,
-      "bye": "GOG",
+      "date": "2026-07-18",
+      "time": "20:00",
+      "bye": "WAL",
       "matches": [
         [
           "KOF",
-          "T1M"
-        ],
-        [
-          "DFX",
-          "WOLF"
-        ],
-        [
-          "MAXXC",
-          "WAL"
+          "GOG"
         ],
         [
           "LVA",
+          "T1M"
+        ],
+        [
+          "WOLF",
+          "MAXXC"
+        ],
+        [
+          "DFX",
           "PGE"
         ]
       ]
     },
     {
       "day": 7,
-      "bye": "WAL",
+      "date": "2026-07-19",
+      "time": "20:00",
+      "bye": "MAXXC",
       "matches": [
         [
           "KOF",
-          "DFX"
+          "WAL"
         ],
         [
-          "MAXXC",
+          "GOG",
           "T1M"
         ],
         [
-          "PGE",
-          "WOLF"
+          "LVA",
+          "PGE"
         ],
         [
-          "LVA",
-          "GOG"
+          "WOLF",
+          "DFX"
         ]
       ]
     },
     {
       "day": 8,
-      "bye": "T1M",
+      "date": "2026-07-20",
+      "time": "20:00",
+      "bye": "DFX",
+      "matches": [
+        [
+          "KOF",
+          "T1M"
+        ],
+        [
+          "WAL",
+          "MAXXC"
+        ],
+        [
+          "GOG",
+          "PGE"
+        ],
+        [
+          "LVA",
+          "WOLF"
+        ]
+      ]
+    },
+    {
+      "day": 9,
+      "date": "2026-07-21",
+      "time": "20:00",
+      "bye": "LVA",
       "matches": [
         [
           "KOF",
           "MAXXC"
         ],
         [
-          "PGE",
-          "DFX"
-        ],
-        [
-          "WOLF",
-          "GOG"
-        ],
-        [
-          "WAL",
-          "LVA"
-        ]
-      ]
-    },
-    {
-      "day": 9,
-      "bye": "MAXXC",
-      "matches": [
-        [
-          "KOF",
+          "T1M",
           "PGE"
         ],
         [
-          "GOG",
+          "WAL",
           "DFX"
         ],
         [
-          "T1M",
-          "LVA"
-        ],
-        [
-          "WOLF",
-          "WAL"
+          "GOG",
+          "WOLF"
         ]
       ]
     }
