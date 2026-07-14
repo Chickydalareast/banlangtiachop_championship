@@ -1,16 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Crown,
+} from "lucide-react";
 import clsx from "clsx";
-import { AlertTriangle, Crown, ShieldCheck } from "lucide-react";
 
 import { calculateStandings } from "@/lib/standings/calculateStandings";
 import type {
   StandingMatch,
   StandingRow,
   StandingTeam,
-  TieReason,
 } from "@/lib/standings/standings.types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -40,63 +46,52 @@ type TeamMeta = {
   logoPath: string | null;
 };
 
-function tieLabel(reason: TieReason): string | null {
-  switch (reason) {
-    case "HEAD_TO_HEAD_NOT_PLAYED":
-      return "Chưa đối đầu";
-    case "HEAD_TO_HEAD_GROUP_INCOMPLETE":
-      return "Đối đầu chưa hoàn tất";
-    case "FULL_TIE":
-      return "Chưa phân định";
-    default:
-      return null;
-  }
-}
-
-function qualificationLabel(row: StandingRow): string {
-  switch (row.qualificationStatus) {
-    case "TEMPORARY_QUALIFIED":
-      return "Top 6 tạm thời";
-    case "TEMPORARY_ELIMINATED":
-      return "Tạm ngoài Top 6";
-    case "UNDECIDED":
-      return "Chưa phân định suất Top 6";
-  }
-}
-
 export default function LeaderboardTable() {
-  const supabase = useMemo(() => createClient(), []);
-  const [rows, setRows] = useState<StandingRow[]>([]);
-  const [teamMetaById, setTeamMetaById] = useState<
-    Record<string, TeamMeta>
-  >({});
-  const [qualificationCount, setQualificationCount] = useState(6);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const supabase = useMemo(
+    () => createClient(),
+    [],
+  );
+  const [rows, setRows] = useState<
+    StandingRow[]
+  >([]);
+  const [teamMetaById, setTeamMetaById] =
+    useState<Record<string, TeamMeta>>({});
+  const [
+    qualificationCount,
+    setQualificationCount,
+  ] = useState(6);
+  const [isLoading, setIsLoading] =
+    useState(true);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setErrorMessage(null);
 
-    const [teamsResult, matchesResult, settingsResult] =
-      await Promise.all([
-        supabase
-          .from("teams")
-          .select(
-            "id,name,short_name,logo_path,display_order",
-          )
-          .order("display_order", { ascending: true })
-          .order("name", { ascending: true }),
-        supabase
-          .from("matches")
-          .select(
-            "id,team_a_id,team_b_id,score_a,score_b,status",
-          ),
-        supabase
-          .from("tournament_settings")
-          .select("qualification_count")
-          .eq("id", 1)
-          .maybeSingle(),
-      ]);
+    const [
+      teamsResult,
+      matchesResult,
+      settingsResult,
+    ] = await Promise.all([
+      supabase
+        .from("teams")
+        .select(
+          "id,name,short_name,logo_path,display_order",
+        )
+        .order("display_order", {
+          ascending: true,
+        }),
+      supabase
+        .from("matches")
+        .select(
+          "id,team_a_id,team_b_id,score_a,score_b,status",
+        ),
+      supabase
+        .from("tournament_settings")
+        .select("qualification_count")
+        .eq("id", 1)
+        .maybeSingle(),
+    ]);
 
     const requestError =
       teamsResult.error ??
@@ -113,56 +108,56 @@ export default function LeaderboardTable() {
       (matchesResult.data ?? []) as QueryMatch[];
     const querySettings =
       settingsResult.data as QuerySettings | null;
-
     const configuredQualificationCount =
       querySettings?.qualification_count;
-
     const safeQualificationCount =
-      Number.isInteger(configuredQualificationCount) &&
+      Number.isInteger(
+        configuredQualificationCount,
+      ) &&
       (configuredQualificationCount ?? 0) > 0
         ? (configuredQualificationCount as number)
         : 6;
 
-    const standingsTeams: StandingTeam[] = queryTeams.map(
-      (team) => ({
+    const standingsTeams: StandingTeam[] =
+      queryTeams.map((team) => ({
         id: team.id,
         name: team.name,
         displayOrder: team.display_order,
-      }),
-    );
-
-    const standingsMatches: StandingMatch[] = queryMatches.map(
-      (match) => ({
+      }));
+    const standingsMatches: StandingMatch[] =
+      queryMatches.map((match) => ({
         id: match.id,
         teamAId: match.team_a_id,
         teamBId: match.team_b_id,
         scoreA: match.score_a,
         scoreB: match.score_b,
         status: match.status,
-      }),
-    );
-
-    const calculatedRows = calculateStandings(
-      standingsTeams,
-      standingsMatches,
-      {
-        qualificationCount: safeQualificationCount,
-      },
-    );
-
-    const nextTeamMeta = Object.fromEntries(
-      queryTeams.map((team) => [
-        team.id,
+      }));
+    const calculatedRows =
+      calculateStandings(
+        standingsTeams,
+        standingsMatches,
         {
-          shortName: team.short_name,
-          logoPath: team.logo_path,
+          qualificationCount:
+            safeQualificationCount,
         },
-      ]),
-    );
+      );
+    const nextTeamMeta =
+      Object.fromEntries(
+        queryTeams.map((team) => [
+          team.id,
+          {
+            shortName: team.short_name,
+            logoPath: team.logo_path,
+          },
+        ]),
+      );
 
     setRows(calculatedRows);
     setTeamMetaById(nextTeamMeta);
-    setQualificationCount(safeQualificationCount);
+    setQualificationCount(
+      safeQualificationCount,
+    );
   }, [supabase]);
 
   useEffect(() => {
@@ -176,9 +171,12 @@ export default function LeaderboardTable() {
           return;
         }
 
-        console.error("Failed to load standings:", error);
+        console.error(
+          "Failed to load standings:",
+          error,
+        );
         setErrorMessage(
-          "Không thể tải bảng xếp hạng. Vui lòng thử lại.",
+          "Unable to load standings.",
         );
       } finally {
         if (isActive) {
@@ -190,7 +188,9 @@ export default function LeaderboardTable() {
     void load();
 
     const channel = supabase
-      .channel("realtime-deterministic-standings")
+      .channel(
+        "realtime-public-standings",
+      )
       .on(
         "postgres_changes",
         {
@@ -210,217 +210,183 @@ export default function LeaderboardTable() {
     };
   }, [fetchData, supabase]);
 
-  const firstEliminatedIndex = rows.findIndex(
-    (row) =>
-      row.qualificationStatus === "TEMPORARY_ELIMINATED",
-  );
-
   if (isLoading) {
     return (
-      <div
-        className="rounded-2xl border border-white/10 bg-gunmetal p-8 text-center text-sm text-slate-400"
-        aria-live="polite"
-      >
-        Đang tải bảng xếp hạng...
+      <div className="py-16 text-center font-teko text-2xl uppercase tracking-[0.18em] text-slate-500">
+        Loading standings...
       </div>
     );
   }
 
   if (errorMessage) {
     return (
-      <div
-        className="flex items-center gap-3 rounded-2xl border border-loss/30 bg-loss/10 p-5 text-sm text-red-200"
-        role="alert"
-      >
-        <AlertTriangle className="h-5 w-5 shrink-0" />
-        <span>{errorMessage}</span>
+      <div className="rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-8 text-center font-semibold text-red-200">
+        {errorMessage}
       </div>
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-gunmetal p-8 text-center">
-        <p className="font-semibold text-white">
-          Chưa có dữ liệu đội tuyển
-        </p>
-        <p className="mt-2 text-sm text-slate-400">
-          Bảng xếp hạng sẽ xuất hiện sau khi seed danh sách
-          đội chính thức.
-        </p>
+      <div className="py-16 text-center font-teko text-2xl uppercase tracking-[0.18em] text-slate-500">
+        No standings data
       </div>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-gunmetal shadow-2xl shadow-black/20">
-      <div className="flex flex-col gap-2 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div>
-          <h2 className="font-teko text-2xl font-bold uppercase tracking-wide text-white sm:text-3xl">
-            Bảng xếp hạng
-          </h2>
-          <p className="text-xs text-slate-400 sm:text-sm">
-            Điểm → hiệu số ván → đối đầu
-          </p>
-        </div>
-
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-win/20 bg-win/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-          <ShieldCheck className="h-4 w-4" />
-          Top {qualificationCount} tạm thời
-        </div>
+    <section className="mx-auto w-full max-w-3xl">
+      <div className="grid grid-cols-[42px_minmax(0,1fr)_44px_58px_48px] items-center gap-2 border-b border-white/15 px-3 pb-3 font-teko text-lg font-bold uppercase tracking-[0.12em] text-slate-500 sm:grid-cols-[54px_minmax(0,1fr)_54px_72px_58px] sm:px-5 sm:text-xl">
+        <span>#</span>
+        <span>Team</span>
+        <span className="text-center">M</span>
+        <span className="text-center">GD</span>
+        <span className="text-right text-primary">
+          PTS
+        </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[760px]">
-          <div className="grid grid-cols-[64px_minmax(220px,1fr)_64px_64px_64px_72px_92px] items-center gap-2 border-b border-white/10 bg-black/20 px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">
-            <span>Hạng</span>
-            <span className="text-left">Đội tuyển</span>
-            <span>Trận</span>
-            <span>Thắng</span>
-            <span>Thua</span>
-            <span>Hiệu số</span>
-            <span>Điểm</span>
-          </div>
+      <div className="space-y-2 pt-2">
+        {rows.map((row, index) => {
+          const meta =
+            teamMetaById[row.teamId];
+          const isChampionRow =
+            index === 0;
+          const isBottomThree =
+            index >= qualificationCount;
+          const showEliminationLine =
+            index === qualificationCount;
 
-          {rows.map((row, index) => {
-            const meta = teamMetaById[row.teamId];
-            const unresolvedLabel = tieLabel(row.tieReason);
-            const showBoundary =
-              firstEliminatedIndex >= 0 &&
-              index === firstEliminatedIndex;
-
-            return (
-              <div key={row.teamId}>
-                {showBoundary && (
-                  <div className="flex items-center gap-3 border-y border-loss/30 bg-loss/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-red-300 sm:px-6">
-                    <span className="h-px flex-1 bg-loss/30" />
-                    Ranh giới Top {qualificationCount}
-                    <span className="h-px flex-1 bg-loss/30" />
-                  </div>
-                )}
-
-                <div
-                  className={clsx(
-                    "grid grid-cols-[64px_minmax(220px,1fr)_64px_64px_64px_72px_92px] items-center gap-2 border-b border-white/5 px-4 py-4 transition-colors last:border-b-0 sm:px-6",
-                    row.qualificationStatus ===
-                      "TEMPORARY_QUALIFIED" &&
-                      "border-l-2 border-l-win/70 bg-win/[0.035]",
-                    row.qualificationStatus ===
-                      "TEMPORARY_ELIMINATED" &&
-                      "border-l-2 border-l-loss/60 bg-loss/[0.035]",
-                    row.qualificationStatus === "UNDECIDED" &&
-                      "border-l-2 border-l-amber-400/70 bg-amber-400/[0.05]",
-                  )}
-                >
-                  <div className="flex justify-center">
-                    <div
-                      className={clsx(
-                        "flex h-10 w-10 items-center justify-center rounded-xl border font-teko text-xl font-bold",
-                        row.rank === 1
-                          ? "border-amber-300/40 bg-amber-300/10 text-amber-300"
-                          : row.tieResolved
-                            ? "border-white/10 bg-white/5 text-white"
-                            : "border-amber-400/30 bg-amber-400/10 text-amber-300",
-                      )}
-                    >
-                      {row.rank === 1 && row.tieResolved ? (
-                        <Crown className="h-5 w-5" />
-                      ) : (
-                        <span>
-                          {row.tieResolved ? "" : "="}
-                          {row.rank}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex min-w-0 items-center gap-3 text-left">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                      {meta?.logoPath ? (
-                        <Image
-                          src={meta.logoPath}
-                          alt={`Logo ${row.teamName}`}
-                          width={44}
-                          height={44}
-                          className="h-full w-full object-contain p-1"
-                        />
-                      ) : (
-                        <span className="font-teko text-lg font-bold text-slate-400">
-                          {(meta?.shortName ?? row.teamName)
-                            .slice(0, 3)
-                            .toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate font-teko text-xl font-bold uppercase tracking-wide text-white">
-                        {meta?.shortName ?? row.teamName}
-                      </p>
-
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span
-                          className={clsx(
-                            "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                            row.qualificationStatus ===
-                              "TEMPORARY_QUALIFIED" &&
-                              "bg-win/10 text-emerald-300",
-                            row.qualificationStatus ===
-                              "TEMPORARY_ELIMINATED" &&
-                              "bg-loss/10 text-red-300",
-                            row.qualificationStatus ===
-                              "UNDECIDED" &&
-                              "bg-amber-400/10 text-amber-300",
-                          )}
-                        >
-                          {qualificationLabel(row)}
-                        </span>
-
-                        {unresolvedLabel && (
-                          <span className="text-[11px] text-amber-300">
-                            {unresolvedLabel}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className="text-center font-teko text-xl text-slate-300">
-                    {row.played}
-                  </span>
-                  <span className="text-center font-teko text-xl text-emerald-300">
-                    {row.wins}
-                  </span>
-                  <span className="text-center font-teko text-xl text-red-300">
-                    {row.losses}
-                  </span>
-                  <span
-                    className={clsx(
-                      "text-center font-teko text-xl font-semibold",
-                      row.gameDifference > 0 &&
-                        "text-emerald-300",
-                      row.gameDifference < 0 && "text-red-300",
-                      row.gameDifference === 0 &&
-                        "text-slate-400",
-                    )}
-                  >
-                    {row.gameDifference > 0 ? "+" : ""}
-                    {row.gameDifference}
-                  </span>
-                  <span className="text-center font-teko text-2xl font-bold text-white">
-                    {row.points}
+          return (
+            <div key={row.teamId}>
+              {showEliminationLine && (
+                <div className="relative my-4 flex items-center justify-center">
+                  <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
+                  <span className="relative rounded border border-red-500/45 bg-[#100b0d] px-3 py-1 font-teko text-sm font-bold uppercase tracking-[0.18em] text-red-400">
+                    Elimination Zone
                   </span>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              )}
 
-      <div className="border-t border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-slate-500 sm:px-6">
-        Tên đội hoặc thứ tự hiển thị chỉ được dùng để giữ giao
-        diện ổn định. Các đội chưa phân định vẫn giữ cùng hạng
-        chính thức.
+              <article
+                className={clsx(
+                  "relative grid min-h-[76px] grid-cols-[42px_minmax(0,1fr)_44px_58px_48px] items-center gap-2 overflow-hidden rounded-lg border px-3 py-3 transition sm:min-h-[88px] sm:grid-cols-[54px_minmax(0,1fr)_54px_72px_58px] sm:px-5",
+                  isChampionRow
+                    ? "border-amber-400/35 bg-gradient-to-r from-amber-500/15 via-[#171318] to-[#111116] shadow-[inset_4px_0_0_#facc15]"
+                    : isBottomThree
+                      ? "border-red-950/60 bg-[#0a0a0f]/75 opacity-50 shadow-[inset_4px_0_0_#53151b]"
+                      : "border-white/5 bg-[#111116]/95 shadow-[inset_4px_0_0_#a84413]",
+                )}
+              >
+                {isChampionRow && (
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_50%,rgba(245,158,11,0.11),transparent_46%)]" />
+                )}
+
+                <div className="relative flex flex-col items-center justify-center">
+                  <span
+                    className={clsx(
+                      "font-teko text-3xl font-black leading-none sm:text-4xl",
+                      isChampionRow
+                        ? "text-amber-300"
+                        : isBottomThree
+                          ? "text-slate-600"
+                          : "text-white",
+                    )}
+                  >
+                    {!row.tieResolved && "="}
+                    {row.rank}
+                  </span>
+                  {isChampionRow &&
+                    row.tieResolved && (
+                      <Crown className="mt-1 h-4 w-4 fill-amber-400 text-amber-400" />
+                    )}
+                </div>
+
+                <div className="relative flex min-w-0 items-center gap-3">
+                  <div
+                    className={clsx(
+                      "flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md sm:h-14 sm:w-14",
+                      isBottomThree &&
+                        "grayscale",
+                    )}
+                  >
+                    {meta?.logoPath ? (
+                      <Image
+                        src={meta.logoPath}
+                        alt={
+                          meta.shortName ??
+                          row.teamName
+                        }
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <span className="font-teko text-xl font-bold text-slate-500">
+                        {(meta?.shortName ??
+                          row.teamName)
+                          .slice(0, 3)
+                          .toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <span
+                    className={clsx(
+                      "truncate font-teko text-2xl font-black uppercase tracking-wide sm:text-3xl",
+                      isBottomThree
+                        ? "text-slate-600"
+                        : "text-white",
+                    )}
+                  >
+                    {meta?.shortName ??
+                      row.teamName}
+                  </span>
+                </div>
+
+                <span
+                  className={clsx(
+                    "relative text-center font-teko text-2xl font-bold sm:text-3xl",
+                    isBottomThree
+                      ? "text-slate-700"
+                      : "text-slate-300",
+                  )}
+                >
+                  {row.played}
+                </span>
+
+                <span
+                  className={clsx(
+                    "relative text-center font-teko text-2xl font-black sm:text-3xl",
+                    isBottomThree
+                      ? "text-slate-700"
+                      : row.gameDifference > 0
+                        ? "text-emerald-400"
+                        : row.gameDifference < 0
+                          ? "text-red-400"
+                          : "text-slate-400",
+                  )}
+                >
+                  {row.gameDifference > 0
+                    ? "+"
+                    : ""}
+                  {row.gameDifference}
+                </span>
+
+                <span
+                  className={clsx(
+                    "relative text-right font-teko text-3xl font-black sm:text-4xl",
+                    isBottomThree
+                      ? "text-slate-700"
+                      : "text-primary",
+                  )}
+                >
+                  {row.points}
+                </span>
+              </article>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

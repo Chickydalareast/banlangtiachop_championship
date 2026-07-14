@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import {
-  Calendar,
+  Moon,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -27,9 +27,60 @@ type Match = {
   score_b: number | null;
   match_day: number;
   match_order: number;
+  scheduled_at: string | null;
   team_a: Team;
   team_b: Team;
 };
+
+type MatchDay = {
+  day: number;
+  dateLabel: string;
+  timeLabel: string;
+  byeTeam: Team | null;
+  matches: Match[];
+};
+
+const tournamentTimeZone =
+  "Asia/Ho_Chi_Minh";
+
+function formatDate(
+  scheduledAt: string | null,
+  day: number,
+): string {
+  if (!scheduledAt) {
+    return `MATCH DAY ${day}`;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "short",
+      day: "2-digit",
+      weekday: "short",
+      timeZone: tournamentTimeZone,
+    },
+  )
+    .format(new Date(scheduledAt))
+    .toUpperCase();
+}
+
+function formatTime(
+  scheduledAt: string | null,
+): string {
+  if (!scheduledAt) {
+    return "20:00";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: tournamentTimeZone,
+    },
+  ).format(new Date(scheduledAt));
+}
 
 export default function MatchesList() {
   const supabase = useMemo(
@@ -39,37 +90,93 @@ export default function MatchesList() {
   const [matches, setMatches] = useState<
     Match[]
   >([]);
+  const [teams, setTeams] = useState<
+    Team[]
+  >([]);
   const [loading, setLoading] =
     useState(true);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
   const fetchMatches = useCallback(
     async () => {
-      const { data, error } = await supabase
-        .from("matches")
-        .select(
-          "id,status,score_a,score_b,match_day,match_order,team_a:teams!team_a_id(id,short_name,logo_path),team_b:teams!team_b_id(id,short_name,logo_path)",
-        )
-        .order("match_day", {
-          ascending: true,
-        })
-        .order("match_order", {
-          ascending: true,
-        });
+      setErrorMessage(null);
 
-      if (!error) {
-        setMatches((data ?? []) as unknown as Match[]);
+      const [
+        matchesResult,
+        teamsResult,
+      ] = await Promise.all([
+        supabase
+          .from("matches")
+          .select(
+            "id,status,score_a,score_b,match_day,match_order,scheduled_at,team_a:teams!team_a_id(id,short_name,logo_path),team_b:teams!team_b_id(id,short_name,logo_path)",
+          )
+          .order("match_day", {
+            ascending: true,
+          })
+          .order("match_order", {
+            ascending: true,
+          }),
+        supabase
+          .from("teams")
+          .select(
+            "id,short_name,logo_path",
+          )
+          .eq("is_active", true)
+          .order("display_order", {
+            ascending: true,
+          }),
+      ]);
+
+      const requestError =
+        matchesResult.error ??
+        teamsResult.error;
+
+      if (requestError) {
+        throw requestError;
       }
 
+      setMatches(
+        (matchesResult.data ??
+          []) as unknown as Match[],
+      );
+      setTeams(
+        (teamsResult.data ??
+          []) as Team[],
+      );
       setLoading(false);
     },
     [supabase],
   );
 
   useEffect(() => {
-    void fetchMatches();
+    let isActive = true;
+
+    const load = async () => {
+      try {
+        await fetchMatches();
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error(
+          "Failed to load matches:",
+          error,
+        );
+        setErrorMessage(
+          "Unable to load match schedule.",
+        );
+        setLoading(false);
+      }
+    };
+
+    void load();
 
     const channel = supabase
-      .channel("realtime-matches")
+      .channel(
+        "realtime-public-matches",
+      )
       .on(
         "postgres_changes",
         {
@@ -78,17 +185,20 @@ export default function MatchesList() {
           table: "matches",
         },
         () => {
-          void fetchMatches();
+          void load();
         },
       )
       .subscribe();
 
     return () => {
+      isActive = false;
       void supabase.removeChannel(channel);
     };
   }, [fetchMatches, supabase]);
 
-  const groupedMatches = useMemo(() => {
+  const groupedMatches = useMemo<
+    MatchDay[]
+  >(() => {
     const groups = new Map<
       number,
       Match[]
@@ -99,59 +209,120 @@ export default function MatchesList() {
         groups.get(match.match_day) ?? [];
 
       current.push(match);
-      groups.set(match.match_day, current);
+      groups.set(
+        match.match_day,
+        current,
+      );
     }
 
-    return Array.from(groups.entries()).sort(
-      ([left], [right]) => left - right,
-    );
-  }, [matches]);
+    return Array.from(groups.entries())
+      .sort(
+        ([left], [right]) =>
+          left - right,
+      )
+      .map(([day, dayMatches]) => {
+        const playingTeamIds =
+          new Set(
+            dayMatches.flatMap(
+              (match) => [
+                match.team_a.id,
+                match.team_b.id,
+              ],
+            ),
+          );
+        const byeTeam =
+          teams.find(
+            (team) =>
+              !playingTeamIds.has(
+                team.id,
+              ),
+          ) ?? null;
+        const firstMatch =
+          dayMatches[0];
+
+        return {
+          day,
+          dateLabel: formatDate(
+            firstMatch?.scheduled_at ??
+              null,
+            day,
+          ),
+          timeLabel: formatTime(
+            firstMatch?.scheduled_at ??
+              null,
+          ),
+          byeTeam,
+          matches: dayMatches,
+        };
+      });
+  }, [matches, teams]);
 
   if (loading) {
     return (
-      <div className="py-20 text-center font-teko text-2xl uppercase tracking-widest text-slate-500">
-        Đang tải lịch thi đấu...
+      <div className="py-16 text-center font-teko text-2xl uppercase tracking-[0.18em] text-slate-500">
+        Loading matches...
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-8 text-center font-semibold text-red-200">
+        {errorMessage}
       </div>
     );
   }
 
   return (
-    <div className="space-y-10">
-      {groupedMatches.map(
-        ([day, dayMatches]) => (
-          <section key={day}>
-            <div className="mb-5 flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h3 className="font-teko text-3xl font-bold uppercase text-white">
-                Ngày thi đấu {day}
+    <div className="mx-auto w-full max-w-3xl space-y-5">
+      {groupedMatches.map((group) => (
+        <section
+          key={group.day}
+          className="overflow-hidden rounded-xl border border-white/10 bg-[#0d0d12]/95"
+        >
+          <header className="flex items-center justify-between border-b border-white/10 bg-[#151219] px-4 py-3 sm:px-5">
+            <div>
+              <p className="font-teko text-sm font-bold uppercase tracking-[0.18em] text-primary">
+                Match Day {group.day}
+              </p>
+              <h3 className="font-teko text-2xl font-black uppercase tracking-wide text-white sm:text-3xl">
+                {group.dateLabel}
               </h3>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {dayMatches.map((match) => {
+            <div className="text-right">
+              <p className="font-teko text-2xl font-black text-white">
+                {group.timeLabel}
+              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                BO3
+              </p>
+            </div>
+          </header>
+
+          <div className="divide-y divide-white/5">
+            {group.matches.map(
+              (match) => {
                 const teamAWon =
-                  match.status === "finished" &&
+                  match.status ===
+                    "finished" &&
                   (match.score_a ?? 0) >
                     (match.score_b ?? 0);
                 const teamBWon =
-                  match.status === "finished" &&
+                  match.status ===
+                    "finished" &&
                   (match.score_b ?? 0) >
                     (match.score_a ?? 0);
 
                 return (
                   <article
                     key={match.id}
-                    className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-4 overflow-hidden rounded-2xl border border-white/10 bg-gunmetal p-5"
+                    className="grid min-h-[78px] grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-center gap-2 px-3 py-3 sm:min-h-[88px] sm:px-5"
                   >
-                    {match.status === "live" && (
-                      <span className="absolute right-3 top-3 rounded-full bg-loss/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-red-300">
-                        Live
-                      </span>
-                    )}
-
-                    <div className="min-w-0 text-center">
-                      <div className="mx-auto mb-2 h-14 w-14">
-                        {match.team_a.logo_path && (
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="h-10 w-10 shrink-0 sm:h-12 sm:w-12">
+                        {match.team_a
+                          .logo_path && (
                           <Image
                             src={
                               match.team_a
@@ -161,15 +332,15 @@ export default function MatchesList() {
                               match.team_a
                                 .short_name
                             }
-                            width={56}
-                            height={56}
+                            width={48}
+                            height={48}
                             className="h-full w-full object-contain"
                           />
                         )}
                       </div>
-                      <p
+                      <span
                         className={clsx(
-                          "truncate font-teko text-2xl font-bold uppercase",
+                          "truncate font-teko text-xl font-black uppercase sm:text-2xl",
                           teamAWon
                             ? "text-emerald-300"
                             : "text-white",
@@ -179,51 +350,37 @@ export default function MatchesList() {
                           match.team_a
                             .short_name
                         }
-                      </p>
+                      </span>
                     </div>
 
                     <div className="text-center">
                       {match.status ===
                       "scheduled" ? (
-                        <p className="font-teko text-2xl font-bold text-slate-500">
+                        <span className="font-teko text-xl font-bold uppercase tracking-widest text-slate-600">
                           VS
-                        </p>
+                        </span>
                       ) : (
-                        <p className="font-teko text-4xl font-bold text-white">
+                        <span className="font-teko text-3xl font-black text-white">
                           {match.score_a}
-                          <span className="mx-2 text-slate-600">
+                          <span className="mx-1.5 text-slate-600">
                             :
                           </span>
                           {match.score_b}
+                        </span>
+                      )}
+
+                      {match.status ===
+                        "live" && (
+                        <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-red-400">
+                          Live
                         </p>
                       )}
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                        Trận{" "}
-                        {match.match_order}
-                      </p>
                     </div>
 
-                    <div className="min-w-0 text-center">
-                      <div className="mx-auto mb-2 h-14 w-14">
-                        {match.team_b.logo_path && (
-                          <Image
-                            src={
-                              match.team_b
-                                .logo_path
-                            }
-                            alt={
-                              match.team_b
-                                .short_name
-                            }
-                            width={56}
-                            height={56}
-                            className="h-full w-full object-contain"
-                          />
-                        )}
-                      </div>
-                      <p
+                    <div className="flex min-w-0 items-center justify-end gap-2.5 text-right">
+                      <span
                         className={clsx(
-                          "truncate font-teko text-2xl font-bold uppercase",
+                          "truncate font-teko text-xl font-black uppercase sm:text-2xl",
                           teamBWon
                             ? "text-emerald-300"
                             : "text-white",
@@ -233,20 +390,50 @@ export default function MatchesList() {
                           match.team_b
                             .short_name
                         }
-                      </p>
+                      </span>
+                      <div className="h-10 w-10 shrink-0 sm:h-12 sm:w-12">
+                        {match.team_b
+                          .logo_path && (
+                          <Image
+                            src={
+                              match.team_b
+                                .logo_path
+                            }
+                            alt={
+                              match.team_b
+                                .short_name
+                            }
+                            width={48}
+                            height={48}
+                            className="h-full w-full object-contain"
+                          />
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
-              })}
-            </div>
-          </section>
-        ),
-      )}
+              },
+            )}
+          </div>
+
+          {group.byeTeam && (
+            <footer className="flex items-center justify-center gap-2 border-t border-white/10 bg-black/20 px-4 py-2.5">
+              <Moon className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                Bye:{" "}
+                {
+                  group.byeTeam
+                    .short_name
+                }
+              </span>
+            </footer>
+          )}
+        </section>
+      ))}
 
       {matches.length === 0 && (
-        <div className="rounded-2xl border border-white/10 bg-gunmetal p-8 text-center text-slate-400">
-          Chưa có lịch thi đấu được công
-          bố.
+        <div className="rounded-xl border border-white/10 bg-[#0d0d12] p-8 text-center font-teko text-2xl uppercase text-slate-500">
+          No matches published
         </div>
       )}
     </div>
