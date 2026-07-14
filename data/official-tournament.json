@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "tournament": {
+    "name": "Bản Làng Tia Chớp Championship",
+    "seasonLabel": "Summer 2026",
+    "qualificationCount": 6
+  },
+  "teams": [
+    {
+      "key": "KOF",
+      "id": "10000000-0000-4000-8000-000000000001",
+      "name": "KING OF FLASH",
+      "shortName": "KOF",
+      "logoPath": "/images/teams/KOF.png",
+      "displayOrder": 1
+    },
+    {
+      "key": "PGE",
+      "id": "10000000-0000-4000-8000-000000000002",
+      "name": "PAUSE GAME ESPORT",
+      "shortName": "PGE",
+      "logoPath": "/images/teams/PGE.png",
+      "displayOrder": 2
+    },
+    {
+      "key": "MAXXC",
+      "id": "10000000-0000-4000-8000-000000000003",
+      "name": "MAXX \"C\"",
+      "shortName": "MAXX \"C\"",
+      "logoPath": "/images/teams/MAXXC.png",
+      "displayOrder": 3
+    },
+    {
+      "key": "DFX",
+      "id": "10000000-0000-4000-8000-000000000004",
+      "name": "DEATH FLASH XECUTION",
+      "shortName": "DFX",
+      "logoPath": "/images/teams/DFX.png",
+      "displayOrder": 4
+    },
+    {
+      "key": "T1M",
+      "id": "10000000-0000-4000-8000-000000000005",
+      "name": "TEAM 1 MÙA",
+      "shortName": "T1M",
+      "logoPath": "/images/teams/T1M.png",
+      "displayOrder": 5
+    },
+    {
+      "key": "WOLF",
+      "id": "10000000-0000-4000-8000-000000000006",
+      "name": "WOLF ALPHA ESPORT",
+      "shortName": "WOLF",
+      "logoPath": "/images/teams/WOLF.png",
+      "displayOrder": 6
+    },
+    {
+      "key": "WAL",
+      "id": "10000000-0000-4000-8000-000000000007",
+      "name": "WE ARE LEGENDS",
+      "shortName": "WAL",
+      "logoPath": "/images/teams/WAL.png",
+      "displayOrder": 7
+    },
+    {
+      "key": "LVA",
+      "id": "10000000-0000-4000-8000-000000000008",
+      "name": "LEVIATHAN AWAKEN",
+      "shortName": "LVA",
+      "logoPath": "/images/teams/LVA.png",
+      "displayOrder": 8
+    },
+    {
+      "key": "GOG",
+      "id": "10000000-0000-4000-8000-000000000009",
+      "name": "GOD OF GAME",
+      "shortName": "GOG",
+      "logoPath": "/images/teams/GOG.png",
+      "displayOrder": 9
+    }
+  ],
+  "rounds": [
+    {
+      "day": 1,
+      "bye": "KOF",
+      "matches": [
+        [
+          "GOG",
+          "PGE"
+        ],
+        [
+          "LVA",
+          "MAXXC"
+        ],
+        [
+          "DFX",
+          "WAL"
+        ],
+        [
+          "T1M",
+          "WOLF"
+        ]
+      ]
+    },
+    {
+      "day": 2,
+      "bye": "LVA",
+      "matches": [
+        [
+          "GOG",
+          "KOF"
+        ],
+        [
+          "WAL",
+          "PGE"
+        ],
+        [
+          "MAXXC",
+          "WOLF"
+        ],
+        [
+          "DFX",
+          "T1M"
+        ]
+      ]
+    },
+    {
+      "day": 3,
+      "bye": "WOLF",
+      "matches": [
+        [
+          "LVA",
+          "KOF"
+        ],
+        [
+          "WAL",
+          "GOG"
+        ],
+        [
+          "PGE",
+          "T1M"
+        ],
+        [
+          "MAXXC",
+          "DFX"
+        ]
+      ]
+    },
+    {
+      "day": 4,
+      "bye": "DFX",
+      "matches": [
+        [
+          "WAL",
+          "KOF"
+        ],
+        [
+          "WOLF",
+          "LVA"
+        ],
+        [
+          "T1M",
+          "GOG"
+        ],
+        [
+          "PGE",
+          "MAXXC"
+        ]
+      ]
+    },
+    {
+      "day": 5,
+      "bye": "PGE",
+      "matches": [
+        [
+          "WOLF",
+          "KOF"
+        ],
+        [
+          "T1M",
+          "WAL"
+        ],
+        [
+          "DFX",
+          "LVA"
+        ],
+        [
+          "GOG",
+          "MAXXC"
+        ]
+      ]
+    },
+    {
+      "day": 6,
+      "bye": "GOG",
+      "matches": [
+        [
+          "KOF",
+          "T1M"
+        ],
+        [
+          "DFX",
+          "WOLF"
+        ],
+        [
+          "MAXXC",
+          "WAL"
+        ],
+        [
+          "LVA",
+          "PGE"
+        ]
+      ]
+    },
+    {
+      "day": 7,
+      "bye": "WAL",
+      "matches": [
+        [
+          "KOF",
+          "DFX"
+        ],
+        [
+          "MAXXC",
+          "T1M"
+        ],
+        [
+          "PGE",
+          "WOLF"
+        ],
+        [
+          "LVA",
+          "GOG"
+        ]
+      ]
+    },
+    {
+      "day": 8,
+      "bye": "T1M",
+      "matches": [
+        [
+          "KOF",
+          "MAXXC"
+        ],
+        [
+          "PGE",
+          "DFX"
+        ],
+        [
+          "WOLF",
+          "GOG"
+        ],
+        [
+          "WAL",
+          "LVA"
+        ]
+      ]
+    },
+    {
+      "day": 9,
+      "bye": "MAXXC",
+      "matches": [
+        [
+          "KOF",
+          "PGE"
+        ],
+        [
+          "GOG",
+          "DFX"
+        ],
+        [
+          "T1M",
+          "LVA"
+        ],
+        [
+          "WOLF",
+          "WAL"
+        ]
+      ]
+    }
+  ]
+}

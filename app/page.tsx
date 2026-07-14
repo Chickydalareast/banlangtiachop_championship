@@ -53,14 +53,14 @@ export default function Home() {
 
           <div className="text-center">
             <h2 className="text-primary font-teko tracking-widest text-xl md:text-2xl uppercase font-bold opacity-80 animate-pulse">
-              Spring Season 2026
+              Summer Season 2026
             </h2>
             <h1 className="font-teko text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
               <span className="block text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-lg">
                 Ban Lang Tia Chop
               </span>
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#FCD34D] to-[#B45309] drop-shadow-[0_0_25px_rgba(255,85,0,0.4)]">
-                Championship Spring 2026
+                Championship Summer 2026
               </span>
             </h1>
           </div>
