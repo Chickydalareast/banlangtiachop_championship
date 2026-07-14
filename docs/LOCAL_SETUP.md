@@ -1,58 +1,45 @@
-# BLTC Clean Rebuild Setup
+# BLTC Local Setup
 
-## Required services
-
-- GitHub repository
-- Supabase project
-- Vercel project, added only after local verification passes
-
-## Local environment
+## Environment
 
 Create `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=<project-url>
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+NEXT_PUBLIC_ADMIN_USERNAME=admin
+NEXT_PUBLIC_ADMIN_PASSWORD=<admin-password>
 ```
 
-The browser and server Supabase clients both read the publishable key above.
+## Admin behavior
 
-Do not commit `.env.local`, database passwords, secret keys or connection
-strings containing passwords.
+The V1 admin screen uses a simple browser-side username/password gate.
 
-## Database source of truth
+The official 36-match schedule is fixed. Admin may only:
 
-The database is rebuilt from:
+- start a match;
+- finish with 2-0, 2-1, 1-2 or 0-2;
+- correct a result;
+- reset a match to scheduled.
+
+Admin cannot create or delete matches.
+
+## Database
+
+Anonymous browser clients may read tournament data and update only these
+`matches` columns:
+
+- `status`
+- `score_a`
+- `score_b`
+
+Database checks reject invalid BO3 score states.
+
+## Verification
 
 ```text
-supabase/migrations/
-supabase/seed.sql
+npm run seed:verify
+npm run test:run
+npm run lint
+npm run build
 ```
-
-The standings table is intentionally not stored.
-
-Standings are recalculated from valid completed matches.
-
-## Public access policy
-
-Anonymous users may read:
-
-- active teams;
-- matches;
-- tournament settings.
-
-Anonymous and authenticated browser clients may not insert, update or delete
-tournament data.
-
-Administrative writes will be implemented through a protected server-side
-route in a later step.
-
-## Recovery order
-
-1. Create a new Supabase project.
-2. Run migrations in filename order.
-3. Run `supabase/seed.sql`.
-4. Configure `.env.local`.
-5. Run `npm ci`.
-6. Run tests, lint and production build.
-7. Configure Vercel only after local verification passes.

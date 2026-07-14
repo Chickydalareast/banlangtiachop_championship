@@ -1,255 +1,640 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Match, Team } from "@/types/database.types";
-import { toast } from "sonner";
-import { Loader2, Zap, Trash2, Save, CheckCircle, RotateCcw } from "lucide-react";
+import Image from "next/image";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  CheckCircle2,
+  Loader2,
+  LockKeyhole,
+  LogOut,
+  Play,
+  RotateCcw,
+  Trophy,
+} from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
+
+import {
+  commandToMatchUpdate,
+  type AdminMatchCommand,
+} from "@/lib/admin/match-command";
+import { createClient } from "@/lib/supabase/client";
+
+type Team = {
+  id: string;
+  name: string;
+  short_name: string;
+  logo_path: string | null;
+};
+
+type MatchStatus =
+  | "scheduled"
+  | "live"
+  | "finished";
+
+type Match = {
+  id: string;
+  score_a: number | null;
+  score_b: number | null;
+  status: MatchStatus;
+  match_day: number;
+  match_order: number;
+  team_a: Team;
+  team_b: Team;
+};
+
+type AuthState =
+  | "checking"
+  | "anonymous"
+  | "authenticated";
+
+const ADMIN_USERNAME =
+  process.env.NEXT_PUBLIC_ADMIN_USERNAME ??
+  "admin";
+const ADMIN_PASSWORD =
+  process.env.NEXT_PUBLIC_ADMIN_PASSWORD ??
+  "";
+const ADMIN_SESSION_KEY =
+  "bltc-simple-admin-session";
+
+const resultPresets = [
+  {
+    label: "2–0",
+    scoreA: 2,
+    scoreB: 0,
+  },
+  {
+    label: "2–1",
+    scoreA: 2,
+    scoreB: 1,
+  },
+  {
+    label: "1–2",
+    scoreA: 1,
+    scoreB: 2,
+  },
+  {
+    label: "0–2",
+    scoreA: 0,
+    scoreB: 2,
+  },
+] as const;
 
 export default function AdminDashboard() {
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [teams, setTeams] = useState<Team[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [matchDay, setMatchDay] = useState(1);
+  const supabase = useMemo(
+    () => createClient(),
+    [],
+  );
+  const [authState, setAuthState] =
+    useState<AuthState>("checking");
+  const [username, setUsername] =
+    useState("admin");
+  const [password, setPassword] =
+    useState("");
+  const [matches, setMatches] = useState<
+    Match[]
+  >([]);
+  const [loadingMatches, setLoadingMatches] =
+    useState(false);
+  const [busyMatchId, setBusyMatchId] =
+    useState<string | null>(null);
 
-    // Form tạo nhanh: Chỉ cần chọn 2 đội
-    const [quickA, setQuickA] = useState("");
-    const [quickB, setQuickB] = useState("");
+  const fetchMatches = useCallback(async () => {
+    setLoadingMatches(true);
 
-    const supabase = createClient();
-
-    const fetchData = async () => {
-        setLoading(true);
-        // Lấy matches: Mới nhất lên đầu
-        const matchesReq = supabase
-            .from("matches")
-            .select(`*, team_a:teams!team_a_id(*), team_b:teams!team_b_id(*)`)
-            .order("created_at", { ascending: false });
-
-        const teamsReq = supabase.from("teams").select("*").eq("is_active", true).order("name");
-
-        const [matchesRes, teamsRes] = await Promise.all([matchesReq, teamsReq]);
-        if (matchesRes.data) setMatches(matchesRes.data as any);
-        if (teamsRes.data) setTeams(teamsRes.data as any);
-        setLoading(false);
-    };
-
-    useEffect(() => { fetchData(); }, []);
-
-    // --- HÀM TẠO NHANH (INSTANT CREATE) ---
-    const handleQuickCreate = async () => {
-        if (!quickA || !quickB) return toast.error("Chọn đủ 2 đội đi sếp!");
-        if (quickA === quickB) return toast.error("2 đội giống nhau sao đá?");
-
-        // Tạo trận với đúng Match Day bạn chọn
-        const { error } = await supabase.from("matches").insert({
-            team_a_id: quickA,
-            team_b_id: quickB,
-            match_day: matchDay,
-            status: "live",
-            score_a: 0,
-            score_b: 0
+    try {
+      const { data, error } = await supabase
+        .from("matches")
+        .select(
+          "id,score_a,score_b,status,match_day,match_order,team_a:teams!team_a_id(id,name,short_name,logo_path),team_b:teams!team_b_id(id,name,short_name,logo_path)",
+        )
+        .order("match_day", {
+          ascending: true,
+        })
+        .order("match_order", {
+          ascending: true,
         });
 
-        if (error) {
-            toast.error(error.message);
-        } else {
-            toast.success(`Đã tạo trận ${matchDay === 1 ? 'Lượt đi' : 'Lượt về'} thành công!`);
-            setQuickA("");
-            setQuickB("");
-            fetchData();
-        }
-    };
+      if (error) {
+        throw error;
+      }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Xóa trận này nhé?")) return;
-        await supabase.from("matches").delete().eq("id", id);
-        toast.success("Đã xóa.");
-        fetchData();
-    };
+      setMatches(
+        (data ?? []) as unknown as Match[],
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load admin matches:",
+        error,
+      );
+      toast.error(
+        "Không thể tải lịch thi đấu.",
+      );
+    } finally {
+      setLoadingMatches(false);
+    }
+  }, [supabase]);
 
-    const updateMatch = async (matchId: string, updates: Partial<Match>) => {
-        // Optimistic Update cho mượt
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...updates } : m)));
+  useEffect(() => {
+    const isAuthenticated =
+      window.sessionStorage.getItem(
+        ADMIN_SESSION_KEY,
+      ) === "true";
 
-        // Nếu bấm "Kết thúc", hỏi lại cho chắc
-        if (updates.status === 'finished') {
-            if (!confirm("Chốt sổ trận này? BXH sẽ cập nhật ngay.")) {
-                fetchData(); return; // Revert nếu cancel
-            }
-        }
+    setAuthState(
+      isAuthenticated
+        ? "authenticated"
+        : "anonymous",
+    );
+  }, []);
 
-        const { error } = await supabase.from("matches").update(updates).eq("id", matchId);
-        if (error) {
-            toast.error("Lỗi: " + error.message);
-            fetchData();
-        } else {
-            if (updates.status === 'finished') toast.success("Đã chốt điểm & Cập nhật BXH!");
-        }
-    };
-
-    const [isAuth, setIsAuth] = useState(false);
-    const [pass, setPass] = useState("");
-
-    if (!isAuth) {
-        return (
-            <div className="h-screen bg-void flex flex-col items-center justify-center gap-4">
-                <h1 className="text-white font-teko text-2xl">ADMIN ACCESS</h1>
-                <input
-                    type="password"
-                    className="bg-gunmetal border border-slate-700 p-2 text-white rounded"
-                    placeholder="Enter Code"
-                    onChange={(e) => setPass(e.target.value)}
-                />
-                <button
-                    className="bg-primary text-white px-4 py-2 rounded font-teko"
-                    onClick={() => pass === "admin123" ? setIsAuth(true) : alert("Sai mật khẩu!")}
-                >
-                    LOGIN
-                </button>
-            </div>
-        );
+  useEffect(() => {
+    if (authState !== "authenticated") {
+      return;
     }
 
-    if (loading) return <div className="flex h-screen items-center justify-center text-primary"><Loader2 className="animate-spin" /></div>;
+    void fetchMatches();
 
-    return (
-        <div className="min-h-screen bg-void p-4 pb-40 font-inter text-slate-200">
-            <div className="max-w-2xl mx-auto space-y-6">
+    const channel = supabase
+      .channel("simple-admin-matches")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "matches",
+        },
+        () => {
+          void fetchMatches();
+        },
+      )
+      .subscribe();
 
-                {/* HEADER */}
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-teko font-bold uppercase text-white">Admin Control</h1>
-                    <div className="text-xs text-slate-500">Auto-save enabled</div>
-                </div>
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [
+    authState,
+    fetchMatches,
+    supabase,
+  ]);
 
-                {/* --- KHU VỰC TẠO NHANH (QUICK BAR) --- */}
-                <div className="bg-gunmetal border border-primary/30 p-4 rounded-xl shadow-[0_0_20px_rgba(255,85,0,0.1)]">
-                    <div className="flex items-center gap-2 mb-2 text-primary font-bold uppercase text-sm">
-                        <Zap className="w-4 h-4" /> Tạo Trận Mới
-                    </div>
+  const groupedMatches = useMemo(() => {
+    const groups = new Map<
+      number,
+      Match[]
+    >();
 
-                    <div className="flex flex-col md:flex-row gap-2">
-                        {/* Chọn Vòng đấu (Lượt đi / Về) */}
-                        <select
-                            className="w-full md:w-32 bg-black/50 border border-slate-600 rounded p-3 text-white outline-none focus:border-primary font-bold text-center"
-                            value={matchDay}
-                            onChange={(e) => setMatchDay(Number(e.target.value))}
-                        >
-                            <option value="1">Lượt đi</option>
-                            <option value="2">Lượt về</option>
-                            <option value="3">Tie-break</option>
-                        </select>
+    for (const match of matches) {
+      const current =
+        groups.get(match.match_day) ?? [];
 
-                        {/* Chọn Đội A */}
-                        <select
-                            className="flex-1 bg-black/50 border border-slate-600 rounded p-3 text-white outline-none focus:border-primary"
-                            value={quickA} onChange={(e) => setQuickA(e.target.value)}
-                        >
-                            <option value="">Chọn Đội A...</option>
-                            {teams.map(t => <option key={t.id} value={t.id}>{t.short_name}</option>)}
-                        </select>
+      current.push(match);
+      groups.set(match.match_day, current);
+    }
 
-                        <span className="self-center font-teko text-xl text-slate-500 hidden md:block">VS</span>
-
-                        {/* Chọn Đội B */}
-                        <select
-                            className="flex-1 bg-black/50 border border-slate-600 rounded p-3 text-white outline-none focus:border-primary"
-                            value={quickB} onChange={(e) => setQuickB(e.target.value)}
-                        >
-                            <option value="">Chọn Đội B...</option>
-                            {teams.map(t => <option key={t.id} value={t.id}>{t.short_name}</option>)}
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={handleQuickCreate}
-                        className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded uppercase tracking-wider transition-all active:scale-95"
-                    >
-                        Bắt đầu trận đấu ngay
-                    </button>
-                </div>
-
-                {/* --- DANH SÁCH TRẬN ĐẤU (ĐANG DIỄN RA & VỪA XONG) --- */}
-                <div className="space-y-4">
-                    {matches.map((match) => (
-                        <div key={match.id} className={clsx(
-                            "relative border rounded-lg p-4 transition-all",
-                            match.status === 'live' ? "bg-gunmetal border-red-500 shadow-md" : "bg-black/20 border-slate-800 opacity-60 hover:opacity-100"
-                        )}>
-                            {/* Status & Day Label (Đoạn này đã được nâng cấp) */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1">
-                                {/* 1. Nhãn Lượt đi / Lượt về (Cái bạn đang thiếu) */}
-                                <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full border bg-black border-slate-600 text-slate-300 shadow-sm">
-                                    {match.match_day === 1 ? 'Lượt đi' : match.match_day === 2 ? 'Lượt về' : `Day ${match.match_day}`}
-                                </span>
-
-                                {/* 2. Nhãn Status (Cũ) */}
-                                <span className={clsx(
-                                    "text-[10px] font-bold uppercase px-3 py-1 rounded-full border shadow-sm",
-                                    match.status === 'live' ? "bg-red-600 border-red-500 text-white animate-pulse" : "bg-slate-800 border-slate-700 text-slate-400"
-                                )}>
-                                    {match.status}
-                                </span>
-                            </div>
-
-                            {/* Delete Button (Góc phải) */}
-                            <button onClick={() => handleDelete(match.id)} className="absolute top-2 right-2 text-slate-600 hover:text-red-500 p-2">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-
-                            {/* SCORING AREA */}
-                            <div className="flex items-center justify-between mt-2 gap-4">
-                                {/* TEAM A */}
-                                <div className="flex-1 text-center">
-                                    <div className="font-teko text-2xl font-bold mb-1">{match.team_a?.short_name}</div>
-                                    <input
-                                        type="number"
-                                        className="w-full h-16 text-center text-5xl font-teko bg-black/40 border border-slate-600 rounded focus:border-primary outline-none"
-                                        value={match.score_a}
-                                        onChange={(e) => updateMatch(match.id, { score_a: Number(e.target.value) })}
-                                        disabled={match.status === 'finished'}
-                                    />
-                                </div>
-
-                                {/* Middle Action */}
-                                <div className="w-24 flex flex-col items-center gap-2">
-                                    {match.status === 'live' ? (
-                                        <button
-                                            onClick={() => updateMatch(match.id, { status: 'finished' })}
-                                            className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold uppercase flex flex-col items-center gap-1"
-                                        >
-                                            <CheckCircle className="w-5 h-5" />
-                                            Chốt Sổ
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => updateMatch(match.id, { status: 'live' })}
-                                            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs font-bold uppercase flex flex-col items-center gap-1"
-                                        >
-                                            <RotateCcw className="w-4 h-4" />
-                                            Mở Lại
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* TEAM B */}
-                                <div className="flex-1 text-center">
-                                    <div className="font-teko text-2xl font-bold mb-1">{match.team_b?.short_name}</div>
-                                    <input
-                                        type="number"
-                                        className="w-full h-16 text-center text-5xl font-teko bg-black/40 border border-slate-600 rounded focus:border-primary outline-none"
-                                        value={match.score_b}
-                                        onChange={(e) => updateMatch(match.id, { score_b: Number(e.target.value) })}
-                                        disabled={match.status === 'finished'}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
+    return Array.from(groups.entries()).sort(
+      ([left], [right]) => left - right,
     );
+  }, [matches]);
+
+  const login = (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (
+      username === ADMIN_USERNAME &&
+      password === ADMIN_PASSWORD
+    ) {
+      window.sessionStorage.setItem(
+        ADMIN_SESSION_KEY,
+        "true",
+      );
+      setPassword("");
+      setAuthState("authenticated");
+      toast.success(
+        "Đăng nhập quản trị thành công.",
+      );
+      return;
+    }
+
+    toast.error(
+      "Sai tài khoản hoặc mật khẩu.",
+    );
+  };
+
+  const logout = () => {
+    window.sessionStorage.removeItem(
+      ADMIN_SESSION_KEY,
+    );
+    setMatches([]);
+    setAuthState("anonymous");
+  };
+
+  const mutateMatch = async (
+    matchId: string,
+    command: AdminMatchCommand,
+  ) => {
+    setBusyMatchId(matchId);
+
+    try {
+      const update =
+        commandToMatchUpdate(command);
+      const { error } = await supabase
+        .from("matches")
+        .update(update)
+        .eq("id", matchId);
+
+      if (error) {
+        throw error;
+      }
+
+      await fetchMatches();
+
+      toast.success(
+        command.action === "finish"
+          ? "Đã chốt kết quả và cập nhật BXH."
+          : command.action === "reset"
+            ? "Đã reset trận về chưa đấu."
+            : "Trận đấu đã bắt đầu.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Cập nhật trận đấu thất bại.",
+      );
+    } finally {
+      setBusyMatchId(null);
+    }
+  };
+
+  if (authState === "checking") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-void p-6">
+        <Loader2 className="h-9 w-9 animate-spin text-primary" />
+      </main>
+    );
+  }
+
+  if (authState === "anonymous") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-void p-6">
+        <form
+          onSubmit={login}
+          className="w-full max-w-md rounded-3xl border border-white/10 bg-gunmetal p-7 shadow-2xl shadow-black/30"
+        >
+          <div className="mb-7 flex items-center gap-4">
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3">
+              <LockKeyhole className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">
+                Quản trị giải đấu
+              </p>
+              <h1 className="font-teko text-4xl font-bold uppercase text-white">
+                Admin Control
+              </h1>
+            </div>
+          </div>
+
+          {!ADMIN_PASSWORD && (
+            <p className="mb-5 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+              Chưa cấu hình
+              NEXT_PUBLIC_ADMIN_PASSWORD.
+            </p>
+          )}
+
+          <label className="mb-2 block text-sm font-semibold text-slate-300">
+            Tài khoản
+          </label>
+          <input
+            value={username}
+            onChange={(event) =>
+              setUsername(
+                event.target.value,
+              )
+            }
+            autoComplete="username"
+            className="mb-5 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-primary"
+          />
+
+          <label className="mb-2 block text-sm font-semibold text-slate-300">
+            Mật khẩu
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) =>
+              setPassword(
+                event.target.value,
+              )
+            }
+            autoComplete="current-password"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-primary"
+          />
+
+          <button
+            type="submit"
+            disabled={
+              !username ||
+              !password ||
+              !ADMIN_PASSWORD
+            }
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold uppercase text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <LockKeyhole className="h-5 w-5" />
+            Đăng nhập
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-void px-4 py-8 text-slate-200 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-8 flex flex-col gap-5 rounded-3xl border border-white/10 bg-gunmetal p-6 shadow-xl shadow-black/20 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-primary/10 p-3">
+              <Trophy className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">
+                Summer 2026
+              </p>
+              <h1 className="font-teko text-4xl font-bold uppercase text-white sm:text-5xl">
+                Điều hành trận đấu
+              </h1>
+              <p className="text-sm text-slate-400">
+                Lịch cố định 36 trận · kết quả
+                BO3 · BXH cập nhật realtime
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={logout}
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:border-loss/40 hover:text-red-300"
+          >
+            <LogOut className="h-4 w-4" />
+            Đăng xuất
+          </button>
+        </header>
+
+        {loadingMatches &&
+        matches.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-9 w-9 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {groupedMatches.map(
+              ([day, dayMatches]) => (
+                <section
+                  key={day}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-gunmetal"
+                >
+                  <div className="flex items-center justify-between border-b border-white/10 bg-black/20 px-5 py-4 sm:px-7">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
+                        Vòng tròn
+                      </p>
+                      <h2 className="font-teko text-3xl font-bold uppercase text-white">
+                        Ngày thi đấu {day}
+                      </h2>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-400">
+                      4 trận
+                    </span>
+                  </div>
+
+                  <div className="grid gap-4 p-4 lg:grid-cols-2 lg:p-6">
+                    {dayMatches.map(
+                      (match) => {
+                        const isBusy =
+                          busyMatchId ===
+                          match.id;
+
+                        return (
+                          <article
+                            key={match.id}
+                            className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                          >
+                            <div className="mb-4 flex items-center justify-between">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Trận{" "}
+                                {
+                                  match.match_order
+                                }
+                              </span>
+                              <span
+                                className={clsx(
+                                  "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                                  match.status ===
+                                    "scheduled" &&
+                                    "bg-white/5 text-slate-400",
+                                  match.status ===
+                                    "live" &&
+                                    "bg-loss/10 text-red-300",
+                                  match.status ===
+                                    "finished" &&
+                                    "bg-win/10 text-emerald-300",
+                                )}
+                              >
+                                {match.status ===
+                                "scheduled"
+                                  ? "Chưa đấu"
+                                  : match.status ===
+                                      "live"
+                                    ? "Đang đấu"
+                                    : "Đã chốt"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                              <div className="min-w-0 text-center">
+                                <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/5">
+                                  {match.team_a
+                                    .logo_path && (
+                                    <Image
+                                      src={
+                                        match
+                                          .team_a
+                                          .logo_path
+                                      }
+                                      alt={
+                                        match
+                                          .team_a
+                                          .short_name
+                                      }
+                                      width={56}
+                                      height={56}
+                                      className="h-full w-full object-contain p-1"
+                                    />
+                                  )}
+                                </div>
+                                <p className="truncate font-teko text-2xl font-bold uppercase text-white">
+                                  {
+                                    match.team_a
+                                      .short_name
+                                  }
+                                </p>
+                              </div>
+
+                              <div className="text-center">
+                                <p className="font-teko text-4xl font-bold text-white">
+                                  {match.score_a ??
+                                    "–"}
+                                  <span className="mx-2 text-slate-600">
+                                    :
+                                  </span>
+                                  {match.score_b ??
+                                    "–"}
+                                </p>
+                              </div>
+
+                              <div className="min-w-0 text-center">
+                                <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/5">
+                                  {match.team_b
+                                    .logo_path && (
+                                    <Image
+                                      src={
+                                        match
+                                          .team_b
+                                          .logo_path
+                                      }
+                                      alt={
+                                        match
+                                          .team_b
+                                          .short_name
+                                      }
+                                      width={56}
+                                      height={56}
+                                      className="h-full w-full object-contain p-1"
+                                    />
+                                  )}
+                                </div>
+                                <p className="truncate font-teko text-2xl font-bold uppercase text-white">
+                                  {
+                                    match.team_b
+                                      .short_name
+                                  }
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-6">
+                              {match.status ===
+                                "scheduled" && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    isBusy
+                                  }
+                                  onClick={() =>
+                                    void mutateMatch(
+                                      match.id,
+                                      {
+                                        action:
+                                          "start",
+                                      },
+                                    )
+                                  }
+                                  className="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold uppercase text-black disabled:opacity-50 sm:col-span-1"
+                                >
+                                  <Play className="h-4 w-4" />
+                                  Bắt đầu
+                                </button>
+                              )}
+
+                              {resultPresets.map(
+                                (result) => (
+                                  <button
+                                    key={
+                                      result.label
+                                    }
+                                    type="button"
+                                    disabled={
+                                      isBusy
+                                    }
+                                    onClick={() =>
+                                      void mutateMatch(
+                                        match.id,
+                                        {
+                                          action:
+                                            "finish",
+                                          scoreA:
+                                            result.scoreA,
+                                          scoreB:
+                                            result.scoreB,
+                                        },
+                                      )
+                                    }
+                                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-teko text-lg font-bold text-white transition hover:border-win/40 hover:text-emerald-300 disabled:opacity-50"
+                                  >
+                                    {
+                                      result.label
+                                    }
+                                  </button>
+                                ),
+                              )}
+
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => {
+                                  if (
+                                    confirm(
+                                      "Reset trận này về trạng thái chưa đấu?",
+                                    )
+                                  ) {
+                                    void mutateMatch(
+                                      match.id,
+                                      {
+                                        action:
+                                          "reset",
+                                      },
+                                    );
+                                  }
+                                }}
+                                className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold uppercase text-slate-400 transition hover:border-loss/40 hover:text-red-300 disabled:opacity-50 sm:col-span-1"
+                              >
+                                {isBusy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RotateCcw className="h-4 w-4" />
+                                )}
+                                Reset
+                              </button>
+                            </div>
+
+                            {match.status ===
+                              "finished" && (
+                              <div className="mt-3 flex items-center justify-center gap-2 text-xs font-semibold text-emerald-300">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Kết quả đã được tính
+                                vào BXH
+                              </div>
+                            )}
+                          </article>
+                        );
+                      },
+                    )}
+                  </div>
+                </section>
+              ),
+            )}
+          </div>
+        )}
+      </div>
+    </main>
+  );
 }
