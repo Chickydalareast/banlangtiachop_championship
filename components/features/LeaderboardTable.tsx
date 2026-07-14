@@ -293,7 +293,6 @@ export default function LeaderboardTable() {
                           : "text-white",
                     )}
                   >
-                    {!row.tieResolved && "="}
                     {row.rank}
                   </span>
                   {isChampionRow &&

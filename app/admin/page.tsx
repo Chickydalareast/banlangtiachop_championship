@@ -133,7 +133,7 @@ export default function AdminDashboard() {
         error,
       );
       toast.error(
-        "Không thể tải lịch thi đấu.",
+        "Unable to load match schedule.",
       );
     } finally {
       setLoadingMatches(false);
@@ -219,13 +219,13 @@ export default function AdminDashboard() {
       setPassword("");
       setAuthState("authenticated");
       toast.success(
-        "Đăng nhập quản trị thành công.",
+        "Admin login successful.",
       );
       return;
     }
 
     toast.error(
-      "Sai tài khoản hoặc mật khẩu.",
+      "Incorrect username or password.",
     );
   };
 
@@ -259,16 +259,16 @@ export default function AdminDashboard() {
 
       toast.success(
         command.action === "finish"
-          ? "Đã chốt kết quả và cập nhật BXH."
+          ? "Result saved and standings updated."
           : command.action === "reset"
-            ? "Đã reset trận về chưa đấu."
-            : "Trận đấu đã bắt đầu.",
+            ? "Match reset to scheduled."
+            : "Match started.",
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Cập nhật trận đấu thất bại.",
+          : "Failed to update match.",
       );
     } finally {
       setBusyMatchId(null);
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">
-                Quản trị giải đấu
+                Tournament Admin
               </p>
               <h1 className="font-teko text-4xl font-bold uppercase text-white">
                 Admin Control
@@ -306,13 +306,13 @@ export default function AdminDashboard() {
 
           {!ADMIN_PASSWORD && (
             <p className="mb-5 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
-              Chưa cấu hình
+              Missing configuration:
               NEXT_PUBLIC_ADMIN_PASSWORD.
             </p>
           )}
 
           <label className="mb-2 block text-sm font-semibold text-slate-300">
-            Tài khoản
+            Username
           </label>
           <input
             value={username}
@@ -326,7 +326,7 @@ export default function AdminDashboard() {
           />
 
           <label className="mb-2 block text-sm font-semibold text-slate-300">
-            Mật khẩu
+            Password
           </label>
           <input
             type="password"
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold uppercase text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <LockKeyhole className="h-5 w-5" />
-            Đăng nhập
+            Login
           </button>
         </form>
       </main>
@@ -370,11 +370,11 @@ export default function AdminDashboard() {
                 Summer 2026
               </p>
               <h1 className="font-teko text-4xl font-bold uppercase text-white sm:text-5xl">
-                Điều hành trận đấu
+                Match Control
               </h1>
               <p className="text-sm text-slate-400">
-                Lịch cố định 36 trận · kết quả
-                BO3 · BXH cập nhật realtime
+                Fixed 36-match schedule ·
+                BO3 · live standings
               </p>
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
             className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:border-loss/40 hover:text-red-300"
           >
             <LogOut className="h-4 w-4" />
-            Đăng xuất
+            Logout
           </button>
         </header>
 
@@ -405,14 +405,14 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between border-b border-white/10 bg-black/20 px-5 py-4 sm:px-7">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
-                        Vòng tròn
+                        Round Robin
                       </p>
                       <h2 className="font-teko text-3xl font-bold uppercase text-white">
-                        Ngày thi đấu {day}
+                        Match Day {day}
                       </h2>
                     </div>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-400">
-                      4 trận
+                      4 matches
                     </span>
                   </div>
 
@@ -430,7 +430,7 @@ export default function AdminDashboard() {
                           >
                             <div className="mb-4 flex items-center justify-between">
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                Trận{" "}
+                                Match{" "}
                                 {
                                   match.match_order
                                 }
@@ -451,11 +451,11 @@ export default function AdminDashboard() {
                               >
                                 {match.status ===
                                 "scheduled"
-                                  ? "Chưa đấu"
+                                  ? "Scheduled"
                                   : match.status ===
                                       "live"
-                                    ? "Đang đấu"
-                                    : "Đã chốt"}
+                                    ? "Live"
+                                    : "Final"}
                               </span>
                             </div>
 
@@ -551,7 +551,7 @@ export default function AdminDashboard() {
                                   className="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold uppercase text-black disabled:opacity-50 sm:col-span-1"
                                 >
                                   <Play className="h-4 w-4" />
-                                  Bắt đầu
+                                  Start
                                 </button>
                               )}
 
@@ -593,7 +593,7 @@ export default function AdminDashboard() {
                                 onClick={() => {
                                   if (
                                     confirm(
-                                      "Reset trận này về trạng thái chưa đấu?",
+                                      "Reset this match to scheduled?",
                                     )
                                   ) {
                                     void mutateMatch(
@@ -620,8 +620,8 @@ export default function AdminDashboard() {
                               "finished" && (
                               <div className="mt-3 flex items-center justify-center gap-2 text-xs font-semibold text-emerald-300">
                                 <CheckCircle2 className="h-4 w-4" />
-                                Kết quả đã được tính
-                                vào BXH
+                                Result included
+                                in standings
                               </div>
                             )}
                           </article>
