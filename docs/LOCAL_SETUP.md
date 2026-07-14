@@ -15,8 +15,7 @@ NEXT_PUBLIC_SUPABASE_URL=<project-url>
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
 
-The current legacy source still reads `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-That compatibility name will be removed when the Supabase client is refactored.
+The browser and server Supabase clients both read the publishable key above.
 
 Do not commit `.env.local`, database passwords, secret keys or connection
 strings containing passwords.
@@ -32,7 +31,7 @@ supabase/seed.sql
 
 The standings table is intentionally not stored.
 
-Standings must be recalculated from completed matches.
+Standings are recalculated from valid completed matches.
 
 ## Public access policy
 
@@ -55,5 +54,5 @@ route in a later step.
 3. Run `supabase/seed.sql`.
 4. Configure `.env.local`.
 5. Run `npm ci`.
-6. Run lint, tests and production build.
+6. Run tests, lint and production build.
 7. Configure Vercel only after local verification passes.
