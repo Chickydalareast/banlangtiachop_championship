@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from 'sonner'
 
 
-const teko = Teko({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-teko" });
+const teko = Teko({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-teko" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {

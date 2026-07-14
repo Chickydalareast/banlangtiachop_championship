@@ -18,7 +18,7 @@ const finishCommandSchema = z
       (scoreB === 2 && scoreA <= 1),
     {
       message:
-        "Kết quả BO3 phải là 2-0, 2-1, 1-2 hoặc 0-2.",
+        "A BO3 result must be 2-0, 2-1, 1-2 or 0-2.",
     },
   );
 
